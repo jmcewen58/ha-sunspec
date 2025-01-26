@@ -12,6 +12,8 @@ from sunspec2.modbus.client import SunSpecModbusClientException
 from sunspec2.modbus.client import SunSpecModbusClientTimeout
 from sunspec2.modbus.modbus import ModbusClientError
 
+#from .entity import SunSpecEntity
+
 TIMEOUT = 120
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
@@ -59,6 +61,10 @@ class SunSpecModelWrapper:
                 )
                 keys.extend(filter(self.isValidPoint, group_keys))
         return keys
+
+    def setValue(self, point_name, new_value, model_index=0): 
+        point = self.getPoint(point_name, model_index)
+        point.value = new_value
 
     def getValue(self, point_name, model_index=0):
         point = self.getPoint(point_name, model_index)
@@ -140,6 +146,9 @@ class SunSpecApiClient:
     async def read(self, model_id) -> SunSpecModelWrapper:
         return await self._hass.async_add_executor_job(self.read_model, model_id)
 
+    async def write(self, model_id, model_index) -> SunSpecModelWrapper:
+        return await self._hass.async_add_executor_job(self.write_model, model_id, model_index)
+
     async def async_get_device_info(self) -> SunSpecModelWrapper:
         return await self.read(1)
 
@@ -216,6 +225,11 @@ class SunSpecApiClient:
         else:
             _LOGGER.debug("Inverter not ready for Modbus TCP connection")
             raise ConnectionError(f"Inverter not active on {self._host}:{self._port}")
+
+    def write_model(self, model_id, model_index):
+        client = self.get_client()
+        model = client.models[model_id][model_index]
+        model.write()
 
     def read_model(self, model_id) -> dict:
         client = self.get_client()

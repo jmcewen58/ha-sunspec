@@ -17,7 +17,8 @@ BINARY_SENSOR_DEVICE_CLASS = "connectivity"
 
 # Platforms
 SENSOR = "sensor"
-PLATFORMS = [SENSOR]
+SELECT = "select"
+PLATFORMS = [SENSOR,SELECT]
 
 
 # Configuration and options

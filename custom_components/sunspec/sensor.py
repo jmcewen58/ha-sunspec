@@ -23,7 +23,6 @@ from homeassistant.const import UnitOfSpeed
 from homeassistant.const import UnitOfTemperature
 from homeassistant.const import UnitOfTime
 
-from . import get_sunspec_unique_id
 from .const import CONF_PREFIX
 from .const import DOMAIN
 from .entity import SunSpecEntity
@@ -88,12 +87,17 @@ async def async_setup_entry(hass, entry, async_add_devices):
 
                 meta = model_wrapper.getMeta(key)
                 sunspec_unit = meta.get("units", "")
+                sunspec_type = meta.get("type","")
+                sunspec_isRW = meta.get("access","") == "RW"
                 ha_meta = HA_META.get(sunspec_unit, [sunspec_unit, None, None])
                 device_class = ha_meta[2]
-                if device_class == SensorDeviceClass.ENERGY:
+                if (sunspec_type=="enum16") & (sunspec_isRW):
+                    _LOGGER.debug(f"skipping select entity: {model_id}-{key}")
+                elif device_class == SensorDeviceClass.ENERGY:
                     _LOGGER.debug("Adding energy sensor")
                     sensors.append(SunSpecEnergySensor(coordinator, entry, data))
                 else:
+                    _LOGGER.debug(f"Adding sensor: {model_id}-{key}")
                     sensors.append(SunSpecSensor(coordinator, entry, data))
 
     async_add_devices(sensors)
@@ -103,16 +107,7 @@ class SunSpecSensor(SunSpecEntity, SensorEntity):
     """sunspec Sensor class."""
 
     def __init__(self, coordinator, config_entry, data):
-        super().__init__(
-            coordinator, config_entry, data["device_info"], data["model"].getGroupMeta()
-        )
-        self.model_id = data["model_id"]
-        self.model_index = data["model_index"]
-        self.model_wrapper = data["model"]
-        self.key = data["key"]
-        self._meta = self.model_wrapper.getMeta(self.key)
-        self._group_meta = self.model_wrapper.getGroupMeta()
-        self._point_meta = self.model_wrapper.getPoint(self.key).pdef
+        super().__init__(coordinator, config_entry, data)
         sunspec_unit = self._meta.get("units", self._meta.get("type", ""))
         ha_meta = HA_META.get(sunspec_unit, [sunspec_unit, ICON_DEFAULT, None])
         self.unit = ha_meta[0]
@@ -124,9 +119,8 @@ class SunSpecSensor(SunSpecEntity, SensorEntity):
         self.lastKnown = None
         self._assumed_state = False
 
-        self._uniqe_id = get_sunspec_unique_id(
-            config_entry.entry_id, self.key, self.model_id, self.model_index
-        )
+        if self.unit == UnitOfElectricCurrent.AMPERE and "DC" in self.name:
+            self.use_icon = ICON_DC_AMPS
 
         vtype = self._meta["type"]
         if vtype in ("enum16", "bitfield32"):
@@ -138,29 +132,9 @@ class SunSpecSensor(SunSpecEntity, SensorEntity):
                 self._options = [item["name"] for item in self._options]
                 self._options.append("")
 
-        self._device_id = config_entry.entry_id
-        name = self._group_meta.get("name", str(self.model_id))
-        if self.model_index > 0:
-            name = f"{name} {self.model_index}"
-        key_parts = self.key.split(":")
-        if len(key_parts) > 1:
-            name = f"{name} {key_parts[0]} {key_parts[1]}"
-
-        desc = self._meta.get("label", self.key)
-        if self.unit == UnitOfElectricCurrent.AMPERE and "DC" in desc:
-            self.use_icon = ICON_DC_AMPS
-
-        if data["prefix"] != "":
-            name = f"{data['prefix']} {name}"
-
-        self._name = f"{name.capitalize()} {desc}"
         _LOGGER.debug(
-            "Created sensor for %s in model %s using prefix %s: %s uid %s, device class %s unit %s",
+            "Created sensor entity for %s device class %s unit %s",
             self.key,
-            self.model_id,
-            data["prefix"],
-            self._name,
-            self._uniqe_id,
             self.use_device_class,
             self.unit,
         )
@@ -175,16 +149,6 @@ class SunSpecSensor(SunSpecEntity, SensorEntity):
         if self.device_class != SensorDeviceClass.ENUM:
             return None
         return self._options
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
-
-    @property
-    def unique_id(self):
-        """Return a unique ID to use for this entity."""
-        return self._uniqe_id
 
     @property
     def assumed_state(self):
@@ -232,11 +196,6 @@ class SunSpecSensor(SunSpecEntity, SensorEntity):
         #     _LOGGER.debug(f"UNIT IS NONT FOR {self.name}")
         #    return None
         return self.unit
-
-    @property
-    def icon(self):
-        """Return the icon of the sensor."""
-        return self.use_icon
 
     @property
     def device_class(self):
