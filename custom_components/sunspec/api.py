@@ -39,8 +39,13 @@ class SunSpecModelWrapper:
             return False
         if point.pdef["type"] in ("enum16", "bitfield32"):
             return True
-        if point.pdef.get("units", None) is None:
+        if point.pdef["type"] in ("sunssf"):
             return False
+        label = point.pdef["label"]
+        if (label is not None) & (label.lower().find("model") >= 0):
+            return False
+        #if point.pdef.get("units", None) is None:
+        #    return False
         return True
 
     def getKeys(self):
@@ -62,9 +67,17 @@ class SunSpecModelWrapper:
                 keys.extend(filter(self.isValidPoint, group_keys))
         return keys
 
-    def setValue(self, point_name, new_value, model_index=0): 
+    def setValueRaw(self, point_name, new_value, model_index=0): 
         point = self.getPoint(point_name, model_index)
         point.value = new_value
+
+    def getValueRaw(self, point_name, model_index=0):
+        point = self.getPoint(point_name, model_index)
+        return point.value
+
+    def setValue(self, point_name, new_value, model_index=0): 
+        point = self.getPoint(point_name, model_index)
+        point.cvalue = new_value
 
     def getValue(self, point_name, model_index=0):
         point = self.getPoint(point_name, model_index)

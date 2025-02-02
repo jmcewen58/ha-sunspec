@@ -2,44 +2,23 @@ from __future__ import annotations
 
 import logging
 
-from typing import Any
+from typing import Any, override
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.core import HomeAssistant, callback
 
-from .const import CONF_PREFIX
-from .const import DOMAIN
 from .entity import SunSpecEntity
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
 async def async_setup_entry(hass, entry, async_add_devices):
-    """Setup sensor platform."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
-    sensors = []
-    device_info = await coordinator.api.async_get_device_info()
-    prefix = entry.options.get(CONF_PREFIX, entry.data.get(CONF_PREFIX, ""))
-    for model_id in coordinator.data.keys():
-        model_wrapper = coordinator.data[model_id]
-        for key in model_wrapper.getKeys():
-            for model_index in range(model_wrapper.num_models):
-                data = {
-                    "device_info": device_info,
-                    "key": key,
-                    "model_id": model_id,
-                    "model_index": model_index,
-                    "model": model_wrapper,
-                    "prefix": prefix,
-                }
+    """Setup select platform."""
+    await SunSpecEntity.async_setup_entry(hass, entry, async_add_devices, create_device_callback)
 
-                meta = model_wrapper.getMeta(key)
-                sunspec_type = meta.get("type","")
-                sunspec_isRW = meta.get("access","") == "RW"
-                if (sunspec_type=="enum16") & (sunspec_isRW):
-                    _LOGGER.debug(f"Adding select entity: {model_id}-{key}")
-                    sensors.append(SunSpecSelect(coordinator, entry, data))
-
-    async_add_devices(sensors)
+def create_device_callback(coordinator, entry, data, meta):
+    if (meta.get("type","")=="enum16") & (meta.get("access","") == "RW"):
+        return SunSpecSelect(coordinator, entry, data)
+    return None
 
 class SunSpecSelect(SunSpecEntity, SelectEntity):
 
@@ -119,20 +98,12 @@ class SunSpecSelect(SunSpecEntity, SelectEntity):
         return None
 
     @property
-    def icon(self):
-        """Return the icon of the sensor."""
-        return self.use_icon
-
-    @property
     def extra_state_attributes(self):
         """Return the state attributes."""
-        attrs = {
-            "integration": DOMAIN,
-            "sunspec_key": self.key,
-            "raw": self.enum_value
-        }
-        label = self._meta.get("label", None)
-        if label is not None:
-            attrs["label"] = label
-
+        attrs = self._base_extra_state_attrs
+        if attrs is not None:
+            attrs["options"] = self._attr_options
+            attrs["raw"] = self.coordinator.data[self.model_id].getValueRaw(
+                self.key, self.model_index
+            )
         return attrs
