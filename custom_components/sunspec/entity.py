@@ -8,6 +8,7 @@ import logging
 import inspect
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.components.sensor import SensorDeviceClass
+from homeassistant.core import callback
 
 
 from homeassistant.const import (DEGREE, PERCENTAGE, UnitOfReactivePower, UnitOfApparentPower,UnitOfDataRate,
@@ -51,6 +52,7 @@ HA_META = {
     "meters": [UnitOfLength.METERS, ICON_DEFAULT, None],
     "mm": [UnitOfLength.MILLIMETERS, ICON_DEFAULT, None],
     "%": [PERCENTAGE, ICON_DEFAULT, None],
+    "Pct": [PERCENTAGE, ICON_DEFAULT, None],
     "Secs": [UnitOfTime.SECONDS, ICON_DEFAULT, None],
     "enum16": [None, ICON_DEFAULT, SensorDeviceClass.ENUM],
     "bitfield32": [None, ICON_DEFAULT, None],
@@ -107,7 +109,7 @@ class SunSpecEntity(CoordinatorEntity):
         sunspec_unit = self._meta.get("units", self._meta.get("type", ""))
         ha_meta = HA_META.get(sunspec_unit, [sunspec_unit, ICON_DEFAULT, None])
         self._attr_native_unit_of_measurement = ha_meta[0]
-        self.use_icon = ha_meta[1]
+        self._attr_icon = ha_meta[1]
         self.use_device_class = ha_meta[2]
 
         self._uniqe_id = get_sunspec_unique_id(
@@ -129,7 +131,7 @@ class SunSpecEntity(CoordinatorEntity):
         self._name = f"{name.capitalize()} {desc}"
 
         if self._attr_native_unit_of_measurement == UnitOfElectricCurrent.AMPERE and "DC" in self.name:
-            self.use_icon = ICON_DC_AMPS
+            self._attr_icon = ICON_DC_AMPS
 
         _LOGGER.debug(
             "Created entity for %s in model %s using prefix %s: %s uid %s",
@@ -140,7 +142,15 @@ class SunSpecEntity(CoordinatorEntity):
             self._uniqe_id,
         )
         _LOGGER.debug(self._meta)
-        self._base_extra_state_attrs = self.create_extra_state_attributes()
+        self._attr_extra_state_attributes = self.create_extra_state_attributes()
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Update sensor with latest data from coordinator."""
+        self._attr_extra_state_attributes["raw"] = self.coordinator.data[self.model_id].getValueRaw(
+            self.key, self.model_index
+        )
+        super()._handle_coordinator_update()
 
     async def write(self, new_value):
         self.model_wrapper.setValue(self.key, new_value, self.model_index)
@@ -155,7 +165,6 @@ class SunSpecEntity(CoordinatorEntity):
     def unique_id(self):
         """Return a unique ID to use for this entity."""
         return self._uniqe_id
-        return self.config_entry.entry_id
 
     @property
     def device_info(self):
@@ -168,11 +177,6 @@ class SunSpecEntity(CoordinatorEntity):
             "sw_version": self._device_data.getValue("Vr"),
             "manufacturer": self._device_data.getValue("Mn"),
         }
-
-    @property
-    def icon(self):
-        """Return the icon of the sensor."""
-        return self.use_icon
 
     @property
     def name(self):
@@ -196,6 +200,15 @@ class SunSpecEntity(CoordinatorEntity):
         desc = self._meta.get("desc", None)
         if desc is not None:
             attrs["description"] = desc
+
+        sf = self.coordinator.data[self.model_id].getSf(
+            self.key, self.model_index
+        )
+
+        if sf is None: 
+            sf = "None"
+        
+        attrs["Scale Factor"] = sf
         
         return attrs
 

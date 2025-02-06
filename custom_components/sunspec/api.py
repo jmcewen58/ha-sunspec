@@ -83,6 +83,11 @@ class SunSpecModelWrapper:
         point = self.getPoint(point_name, model_index)
         return point.cvalue
 
+    def getSf(self, point_name, model_index=0):
+        point = self.getPoint(point_name, model_index)
+        point.cvalue
+        return point.sf_value
+
     def getMeta(self, point_name):
         return self.getPoint(point_name).pdef
 

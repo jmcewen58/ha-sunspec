@@ -1,6 +1,5 @@
 """Sensor platform for SunSpec."""
 import logging
-from typing import override
 
 from homeassistant.components.sensor import (
     RestoreSensor, SensorDeviceClass, SensorEntity, SensorStateClass
@@ -61,6 +60,8 @@ class SunSpecSensor(SunSpecEntity, SensorEntity):
         )
         if (self._options):
             _LOGGER.debug("Valid options for ENUM: %s", self._options)
+            self._attr_extra_state_attributes["options"] = self._options
+
 
     # def async_will_remove_from_hass(self):
     #    _LOGGER.debug(f"Will remove sensor {self._uniqe_id}")
@@ -90,6 +91,8 @@ class SunSpecSensor(SunSpecEntity, SensorEntity):
                 "Math overflow error when retreiving calculated value for %s", self.key
             )
             return None
+        if val is None:
+            return None
         vtype = self._meta["type"]
         if vtype in ("enum16", "bitfield32"):
             symbols = self._point_meta.get("symbols", None)
@@ -110,14 +113,6 @@ class SunSpecSensor(SunSpecEntity, SensorEntity):
                 return ""
         return val
 
-#    @property
-#    def native_unit_of_measurement(self):
-        """Return the unit of measurement."""
-        # if self.unit == "":
-        #     _LOGGER.debug(f"UNIT IS NONT FOR {self.name}")
-        #    return None
-#        return self.unit
-
     @property
     def device_class(self):
         """Return de device class of the sensor."""
@@ -126,24 +121,11 @@ class SunSpecSensor(SunSpecEntity, SensorEntity):
     @property
     def state_class(self):
         """Return de device class of the sensor."""
-        if self.unit == "" or self.unit is None:
+        if self._attr_native_unit_of_measurement == "" or self._attr_native_unit_of_measurement is None:
             return None
         if self.device_class == SensorDeviceClass.ENERGY:
             return SensorStateClass.TOTAL_INCREASING
         return SensorStateClass.MEASUREMENT
-
-    @override
-    @property
-    def extra_state_attributes(self):
-        """Return the state attributes."""
-        attrs = self._base_extra_state_attrs
-        if (attrs is not None):
-            if (self._options):
-                attrs["options"] = self._options
-            attrs["raw"] = self.coordinator.data[self.model_id].getValueRaw(
-                self.key, self.model_index
-            )
-        return attrs
 
 class SunSpecEnergySensor(SunSpecSensor, RestoreSensor):
     def __init__(self, coordinator, config_entry, data):

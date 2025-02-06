@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from typing import Any, override
+from typing import Any
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.core import HomeAssistant, callback
@@ -22,14 +22,9 @@ def create_device_callback(coordinator, entry, data, meta):
 
 class SunSpecSelect(SunSpecEntity, SelectEntity):
 
- #meta:{'access': 'RW', 'desc': 'Commands to PCS. Enumerated value.', 
- # 'label': 'Set Operation', 'name': 'OpCtl', 'size': 1, 
- # 'symbols': [{'label': 'Stop the DER', 'name': 'STOP', 'value': 0}, {'label': 'Start the DER', 'name': 'START', 'value': 1}, {'label': 'Enter Standby Mode', 'name': 'ENTER_STANDBY', 'value': 2}, {'label': 'Exit Standby Mode', 'name': 'EXIT_STANDBY', 'value': 3}], 'type': 'enum16'}
-
-
     def __init__(self, coordinator, config_entry, data):
         super().__init__(coordinator, config_entry, data)
-        self.use_icon = "mdi:dip-switch" 
+        self._attr_icon = "mdi:dip-switch" 
         self.enum_value = None
         self._attr_options = []
 
@@ -37,11 +32,7 @@ class SunSpecSelect(SunSpecEntity, SelectEntity):
         self._attr_options = [item["name"] for item in self._attr_options]
 
         _LOGGER.debug("Valid options for select: %s", self._attr_options)
-
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Update sensor with latest data from coordinator."""
-        self.async_write_ha_state()
+        self._attr_extra_state_attributes["options"] = self._attr_options
 
     @property
     def should_poll(self) -> bool:
@@ -97,13 +88,3 @@ class SunSpecSelect(SunSpecEntity, SelectEntity):
             return self._attr_current_option
         return None
 
-    @property
-    def extra_state_attributes(self):
-        """Return the state attributes."""
-        attrs = self._base_extra_state_attrs
-        if attrs is not None:
-            attrs["options"] = self._attr_options
-            attrs["raw"] = self.coordinator.data[self.model_id].getValueRaw(
-                self.key, self.model_index
-            )
-        return attrs

@@ -1,11 +1,9 @@
 import logging
-from typing import override
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from homeassistant.core import callback
 from homeassistant.components.number import (
     NumberEntity
 )
@@ -27,11 +25,6 @@ class SunSpecNumberEntity(NumberEntity, SunSpecEntity):
 
     def __init__(self, coordinator, config_entry, data):
         super().__init__(coordinator, config_entry, data)
-
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Update sensor with latest data from coordinator."""
-        self.async_write_ha_state()
 
     @property
     def native_step(self) -> float:
@@ -61,17 +54,6 @@ class SunSpecNumberEntity(NumberEntity, SunSpecEntity):
         """Data is delivered by the hub"""
         return True
         
-    @override
-    @property
-    def extra_state_attributes(self):
-        """Return the state attributes."""
-        attrs = self._base_extra_state_attrs
-        if attrs is not None:
-            attrs["raw"] = self.coordinator.data[self.model_id].getValueRaw(
-                self.key, self.model_index
-            )
-        return attrs
-    
     async def async_set_native_value(self, value: float) -> None:
         await self.write(value)
 
