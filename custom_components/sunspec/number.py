@@ -1,4 +1,5 @@
 import logging
+from typing import override
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -60,6 +61,7 @@ class SunSpecNumberEntity(NumberEntity, SunSpecEntity):
         """Data is delivered by the hub"""
         return True
         
+    @override
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""

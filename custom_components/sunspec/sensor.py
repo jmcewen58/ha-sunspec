@@ -44,7 +44,7 @@ class SunSpecSensor(SunSpecEntity, SensorEntity):
         vtype = self._meta["type"]
         if vtype=="string":
             self.use_device_class = None
-            self.unit = None
+            self._attr_native_unit_of_measurement = None
         if vtype in ("enum16", "bitfield32"):
             self._options = self._point_meta.get("symbols", None)
             if self._options is None:
@@ -57,7 +57,7 @@ class SunSpecSensor(SunSpecEntity, SensorEntity):
             "Created sensor entity for %s device class %s unit %s",
             self.key,
             self.use_device_class,
-            self.unit,
+            self._attr_native_unit_of_measurement,
         )
         if (self._options):
             _LOGGER.debug("Valid options for ENUM: %s", self._options)
@@ -110,13 +110,13 @@ class SunSpecSensor(SunSpecEntity, SensorEntity):
                 return ""
         return val
 
-    @property
-    def native_unit_of_measurement(self):
+#    @property
+#    def native_unit_of_measurement(self):
         """Return the unit of measurement."""
         # if self.unit == "":
         #     _LOGGER.debug(f"UNIT IS NONT FOR {self.name}")
         #    return None
-        return self.unit
+#        return self.unit
 
     @property
     def device_class(self):

@@ -106,7 +106,7 @@ class SunSpecEntity(CoordinatorEntity):
         self._point_meta = self.model_wrapper.getPoint(self.key).pdef
         sunspec_unit = self._meta.get("units", self._meta.get("type", ""))
         ha_meta = HA_META.get(sunspec_unit, [sunspec_unit, ICON_DEFAULT, None])
-        self.unit = ha_meta[0]
+        self._attr_native_unit_of_measurement = ha_meta[0]
         self.use_icon = ha_meta[1]
         self.use_device_class = ha_meta[2]
 
@@ -128,7 +128,7 @@ class SunSpecEntity(CoordinatorEntity):
 
         self._name = f"{name.capitalize()} {desc}"
 
-        if self.unit == UnitOfElectricCurrent.AMPERE and "DC" in self.name:
+        if self._attr_native_unit_of_measurement == UnitOfElectricCurrent.AMPERE and "DC" in self.name:
             self.use_icon = ICON_DC_AMPS
 
         _LOGGER.debug(
