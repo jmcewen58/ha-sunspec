@@ -19,7 +19,7 @@ def create_device_callback(coordinator, entry, data, meta):
     sunspec_unit = meta.get("units", "")
     ha_meta = HA_META.get(sunspec_unit, [sunspec_unit, None, None])
     device_class = ha_meta[2]
-    if (meta.get("type","")=="bitfield32enum16"):
+    if (meta.get("type","") in ("bitfield32")):
         return SunSpecSensor(coordinator, entry, data)
     elif (meta.get("access","") == "RW"):
         return None

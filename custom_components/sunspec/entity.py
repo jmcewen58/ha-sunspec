@@ -68,7 +68,7 @@ class SunSpecEntity(CoordinatorEntity):
         sensors = []
         platform = inspect.getmodule(create_device).__name__
         platform = platform.replace("custom_components.","")
-        device_info = await coordinator.api.async_get_device_info()
+        device_info = coordinator.api.first_wrapper #await coordinator.api.async_get_device_info()
         prefix = entry.options.get(CONF_PREFIX, entry.data.get(CONF_PREFIX, ""))
         for model_id in coordinator.data.keys():
             model_wrapper = coordinator.data[model_id]

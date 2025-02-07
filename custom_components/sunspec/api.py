@@ -134,6 +134,7 @@ class SunSpecApiClient:
         self._client_key = f"{host}:{port}:{slave_id}"
         self._lock = threading.Lock()
         self._reconnect = False
+        self.first_wrapper: SunSpecModelWrapper = None
 
     def get_client(self, config=None):
         cached = SunSpecApiClient.CLIENT_CACHE.get(self._client_key, None)
@@ -169,6 +170,9 @@ class SunSpecApiClient:
 
     async def async_get_device_info(self) -> SunSpecModelWrapper:
         return await self.read(1)
+    
+    async def asynch_first_read(self):
+        self.first_wrapper = await self.async_get_device_info()
 
     async def async_get_models(self, config=None) -> list:
         _LOGGER.debug("Fetching models")
@@ -235,6 +239,7 @@ class SunSpecApiClient:
                 client.scan(
                     connect=False, progress=progress, full_model_read=False, delay=0.5
                 )
+
                 return client
             except ModbusClientError:
                 raise ConnectionError(
@@ -253,7 +258,7 @@ class SunSpecApiClient:
         client = self.get_client()
         models = client.models[model_id]
         for model in models:
-            time.sleep(0.6)
+            #time.sleep(1)
             model.read()
 
         return SunSpecModelWrapper(models)
