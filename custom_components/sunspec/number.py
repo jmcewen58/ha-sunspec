@@ -49,11 +49,6 @@ class SunSpecNumberEntity(NumberEntity, SunSpecEntity):
     def mode(self) -> str:
         return "box"
 
-    @property
-    def should_poll(self) -> bool:
-        """Data is delivered by the hub"""
-        return True
-        
     async def async_set_native_value(self, value: float) -> None:
         await self.write(value)
 

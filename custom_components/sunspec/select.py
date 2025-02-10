@@ -34,11 +34,6 @@ class SunSpecSelect(SunSpecEntity, SelectEntity):
         _LOGGER.debug("Valid options for select: %s", self._attr_options)
         self._attr_extra_state_attributes["options"] = self._attr_options
 
-    @property
-    def should_poll(self) -> bool:
-        """Data is delivered by the hub"""
-        return True
-        
     # def async_will_remove_from_hass(self):
     #    _LOGGER.debug(f"Will remove sensor {self._uniqe_id}")
 

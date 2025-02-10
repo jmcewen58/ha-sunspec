@@ -3,6 +3,7 @@
 import logging
 import socket
 import threading
+from datetime import (datetime)
 import time
 from types import SimpleNamespace
 
@@ -112,6 +113,17 @@ class SunSpecModelWrapper:
             ]  # Generic access if no specific subgrouping is specified
 
 
+class ModelWrapperCacheItem:
+    def __init__(self, wrapper: SunSpecModelWrapper) -> None:
+        """Sunspec model wrapper"""
+        self.wrapper = wrapper
+        self.time = datetime.now()
+
+    def isExpired(self) -> bool:
+        duration = datetime.now() - self.time
+        return (duration.total_seconds() > 1)
+
+    
 # pragma: not covered
 def progress(msg):
     _LOGGER.debug(msg)
@@ -135,6 +147,8 @@ class SunSpecApiClient:
         self._lock = threading.Lock()
         self._reconnect = False
         self.first_wrapper: SunSpecModelWrapper = None
+        self.wrapper_cache = {}
+        self.lock = threading.Lock() 
 
     def get_client(self, config=None):
         cached = SunSpecApiClient.CLIENT_CACHE.get(self._client_key, None)
@@ -163,7 +177,13 @@ class SunSpecApiClient:
             raise ConnectionError() from connect_error
 
     async def read(self, model_id) -> SunSpecModelWrapper:
-        return await self._hass.async_add_executor_job(self.read_model, model_id)
+        cached = self.wrapper_cache.get(model_id)
+        if (cached is not None) and not (cached.isExpired()):
+            _LOGGER.debug (f"Returning {model_id} from cache as it has been less than 1 second")
+            return cached.wrapper
+        wrapper: SunSpecModelWrapper = await self._hass.async_add_executor_job(self.read_model, model_id)
+        self.wrapper_cache[model_id] = ModelWrapperCacheItem(wrapper)
+        return wrapper
 
     async def write(self, model_id, model_index) -> SunSpecModelWrapper:
         return await self._hass.async_add_executor_job(self.write_model, model_id, model_index)
@@ -250,15 +270,28 @@ class SunSpecApiClient:
             raise ConnectionError(f"Inverter not active on {self._host}:{self._port}")
 
     def write_model(self, model_id, model_index):
-        client = self.get_client()
-        model = client.models[model_id][model_index]
-        model.write()
+        self.lock.acquire(True)
+        try:
+            client = self.get_client()
+            model = client.models[model_id][model_index]
+            model.write()
+            time.sleep(0.5)
+        except Exception as err:
+            self.lock.release()
+            raise err    
+        self.lock.release()
 
     def read_model(self, model_id) -> dict:
-        client = self.get_client()
-        models = client.models[model_id]
-        for model in models:
-            #time.sleep(1)
-            model.read()
+        _LOGGER.debug(f"Starting read_model {model_id}")
+        self.lock.acquire(True)
+        try:
+            client = self.get_client()
+            models = client.models[model_id]
+            for model in models:
+                model.read()
+        except Exception as err:
+            self.lock.release()
+            raise err    
+        self.lock.release()
 
         return SunSpecModelWrapper(models)
